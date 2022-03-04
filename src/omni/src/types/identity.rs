@@ -33,22 +33,14 @@ impl Identity {
 
     pub fn public_key(key: &CoseKey) -> Self {
         let pk = Sha3_224::digest(&key.to_public_key().unwrap().to_bytes_stable().unwrap());
-        Self::public_key_raw(pk.into())
+        // Self::public_key_raw(pk.into())
+        Self(InnerIdentity::public_key(pk.into()))
     }
 
     pub fn subresource(key: &CoseKey, subid: u32) -> Self {
         let pk = Sha3_224::digest(&key.to_public_key().unwrap().to_bytes_stable().unwrap());
-        Self::subresource_raw(pk.into(), subid)
-    }
-
-    #[inline(always)]
-    pub(super) fn public_key_raw(hash: PublicKeyHash) -> Self {
-        Self(InnerIdentity::public_key(hash))
-    }
-
-    #[inline(always)]
-    pub(super) fn subresource_raw(hash: PublicKeyHash, subid: u32) -> Self {
-        Self(InnerIdentity::subresource(hash, subid))
+        // Self::subresource_raw(pk.into(), subid)
+        Self(InnerIdentity::subresource(pk.into(), subid))
     }
 
     pub const fn is_anonymous(&self) -> bool {
@@ -556,11 +548,23 @@ mod serde {
     }
 }
 
-#[cfg(any(test, feature = "test"))]
-pub mod tests {
+// #[cfg(any(test, feature = "test"))]
+#[cfg(test)]
+mod test {
+    use super::*;
     use crate::types::identity::CoseKeyIdentity;
     use crate::Identity;
     use std::str::FromStr;
+
+    impl Identity {
+        fn public_key_raw(hash: PublicKeyHash) -> Self {
+            Self(InnerIdentity::public_key(hash))
+        }
+
+        fn subresource_raw(hash: PublicKeyHash, subid: u32) -> Self {
+            Self(InnerIdentity::subresource(hash, subid))
+        }
+    }
 
     fn identity(seed: u32) -> Identity {
         #[rustfmt::skip]
@@ -578,14 +582,23 @@ pub mod tests {
     }
 
     pub fn identity_from_raw_hash(
-        hash: super::PublicKeyHash,
+        hash: PublicKeyHash,
         sub_id: Option<u32>,
-    ) -> super::Identity {
+    ) -> Identity {
         if let Some(sub_id) = sub_id {
-            super::Identity::subresource_raw(hash, sub_id)
+            Identity::subresource_raw(hash, sub_id)
         } else {
-            super::Identity::public_key_raw(hash)
+            Identity::public_key_raw(hash)
         }
+    }
+
+    #[test]
+    fn zero() {
+        let id1 = identity_from_raw_hash([0;28], None);
+        let id2 = identity_from_raw_hash([0;28], Some(2));
+
+        assert_ne!(id1, id2);
+
     }
 
     #[test]
