@@ -1418,6 +1418,7 @@ dependencies = [
  "simple_asn1",
  "smol",
  "static_assertions",
+ "subslice",
  "thiserror",
  "tiny_http",
  "tokio",
@@ -2646,6 +2647,15 @@ name = "strsim"
 version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73473c0e59e6d5812c5dfe2a064a6444949f089e20eec9a2e5506596494e4623"
+
+[[package]]
+name = "subslice"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e0a8e4809a3bb02de01f1f7faf1ba01a83af9e8eabcd4d31dd6e413d14d56aae"
+dependencies = [
+ "memchr",
+]
 
 [[package]]
 name = "subtle"
