@@ -5,3 +5,8 @@ members = [
     "src/many-client",
     "src/many-macros",
 ]
+
+[profile.release]
+strip = true  # Strip debug info from release build
+lto = true  # Perform "fat" LTO
+codegen-units = 1 # Improve the performance of the generated code at the cost of compile time

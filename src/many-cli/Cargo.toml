@@ -2,6 +2,14 @@
 name = "many-cli"
 version = "0.1.0"
 edition = "2021"
+authors = ["The Lifted Initiative"]
+license = "Apache-2.0"
+description = "Rust implementation of the MANY protocol."
+readme = "README.md"
+homepage = "https://theliftedinitiative.org/"
+repository = "https://github.com/the-lifted-initiative/many-rs"
+keywords = ["cli", "web3", "blockchain", "tendermint", "proto", "crypto", "the-lifted-initiative"]
+categories = ["command-line-utilities"]
 
 [[bin]]
 name = "many"
