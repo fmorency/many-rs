@@ -266,12 +266,12 @@ impl LowLevelManyRequestHandler for Arc<Mutex<ManyServer>> {
             request
                 .and_then(|message| {
                     id = message.id;
-                    // if this.blockchain {
-                    //     // TODO: DO SOMETHING
-                    // }
-                    // else {
+                    if this.blockchain {
+                        // TODO: DO SOMETHING
+                    }
+                    else {
                         _validate_time(&message, SystemTime::now(), this.timeout)?;
-                    // }
+                    }
                     Ok(message)
                 })
                 .and_then(|message| {
