@@ -52,7 +52,7 @@ impl<M: LowLevelManyRequestHandler + many_modules::base::BaseModuleBackend + 'st
 #[derive(Debug, Clone)]
 pub struct ManyModuleList {}
 
-pub const MANYSERVER_DEFAULT_TIMEOUT: u64 = 300;
+pub const MANYSERVER_DEFAULT_TIMEOUT: u64 = 10;
 
 #[derive(Debug, Default)]
 pub struct ManyServer {
@@ -64,6 +64,7 @@ pub struct ManyServer {
     timeout: u64,
     fallback: Option<Arc<dyn ManyServerFallback + Send + 'static>>,
     allowed_origins: Option<Vec<ManyUrl>>,
+    blockchain: bool,
 }
 
 impl ManyServer {
@@ -111,10 +112,14 @@ impl ManyServer {
     {
         let info = module.info();
         let ManyModuleInfo {
+            name,
             attribute,
             endpoints,
-            ..
         } = info;
+
+        if name == "AbciModule" {
+            self.blockchain = true;
+        }
 
         if let Some(Attribute { id, .. }) = attribute {
             if let Some(m) = self
@@ -261,7 +266,12 @@ impl LowLevelManyRequestHandler for Arc<Mutex<ManyServer>> {
             request
                 .and_then(|message| {
                     id = message.id;
-                    _validate_time(&message, SystemTime::now(), this.timeout)?;
+                    // if this.blockchain {
+                    //     // TODO: DO SOMETHING
+                    // }
+                    // else {
+                        _validate_time(&message, SystemTime::now(), this.timeout)?;
+                    // }
                     Ok(message)
                 })
                 .and_then(|message| {
