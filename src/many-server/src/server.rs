@@ -50,7 +50,7 @@ impl<M: LowLevelManyRequestHandler + base::BaseModuleBackend + 'static> ManyServ
 #[derive(Debug, Clone)]
 pub struct ManyModuleList {}
 
-pub const MANYSERVER_DEFAULT_TIMEOUT: u64 = 300;
+pub const MANYSERVER_DEFAULT_TIMEOUT: u64 = 30;
 
 #[derive(Default)]
 pub struct ManyServer {
