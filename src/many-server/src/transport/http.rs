@@ -77,7 +77,6 @@ impl<E: LowLevelManyRequestHandler> HttpServer<E> {
 
     pub async fn bind<A: ToSocketAddrs>(&self, addr: A) -> Result<(), anyhow::Error> {
         let server = tiny_http::Server::http(addr).map_err(|e| anyhow!("{}", e))?;
-
         loop {
             if let Some(mut request) = server.recv_timeout(Duration::from_millis(100))? {
                 let response = self.handle_request(&mut request).await;
