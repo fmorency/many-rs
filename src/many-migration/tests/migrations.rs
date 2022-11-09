@@ -58,18 +58,21 @@ fn initialize() {
     let mut storage = Storage::new();
 
     // Should not run when block height == 0
-    migrations["A"].initialize(&mut storage, 0).unwrap();
+    let res = migrations["A"].initialize(&mut storage, 0).unwrap();
+    assert!(!res);
     assert!(storage.is_empty());
 
     // Migration should run when block height == 1
-    migrations["A"].initialize(&mut storage, 1).unwrap();
+    let res = migrations["A"].initialize(&mut storage, 1).unwrap();
+    assert!(res);
     assert!(!storage.is_empty());
     assert_eq!(storage.len(), 1);
     assert!(storage.contains_key("Init"));
     assert_eq!(storage.get("Init").unwrap(), "Okay");
 
     // Should not do anything after it ran once
-    migrations["A"].initialize(&mut storage, 2).unwrap();
+    let res = migrations["A"].initialize(&mut storage, 2).unwrap();
+    assert!(!res);
     assert_eq!(storage.len(), 1);
 }
 
@@ -82,16 +85,19 @@ fn update() {
     storage.insert("Counter".to_string(), "0".to_string());
 
     // Should not run when block height == 0
-    migrations["B"].update(&mut storage, 0).unwrap();
+    let res =migrations["B"].update(&mut storage, 0).unwrap();
+    assert!(!res);
     assert_eq!(storage["Counter"], "0".to_string());
 
     // Should not run when block height == 1
-    migrations["B"].update(&mut storage, 1).unwrap();
+    let res = migrations["B"].update(&mut storage, 1).unwrap();
+    assert!(!res);
     assert_eq!(storage["Counter"], "0".to_string());
 
     // Should run when block height is > 1
     for i in 2..10 {
-        migrations["B"].update(&mut storage, 2).unwrap();
+        let res = migrations["B"].update(&mut storage, 2).unwrap();
+        assert!(res);
         assert_eq!(storage["Counter"], (i - 1).to_string());
     }
 }
@@ -105,35 +111,49 @@ fn initialize_update() {
     storage.insert("Counter".to_string(), "0".to_string());
 
     for i in 0..4 {
-        migrations["C"].initialize(&mut storage, i).unwrap();
+        let res = migrations["C"].initialize(&mut storage, i).unwrap();
         match i {
-            0 => assert_eq!(storage.len(), 1),
+            0 => {
+                assert!(!res);
+                assert_eq!(storage.len(), 1);
+            },
             1 => {
+                assert!(res);
                 assert_eq!(storage.len(), 2);
                 assert!(storage.contains_key("Init"));
                 assert_eq!(storage.get("Init").unwrap(), "Okay");
             }
-            2 => assert_eq!(storage.len(), 2),
-            3 => assert_eq!(storage.len(), 2),
+            2 => {
+                assert!(!res);
+                assert_eq!(storage.len(), 2);
+            },
+            3 => {
+                assert!(!res);
+                assert_eq!(storage.len(), 2);
+            },
             _ => unimplemented!(),
         }
 
-        migrations["C"].update(&mut storage, i).unwrap();
+        let res = migrations["C"].update(&mut storage, i).unwrap();
 
         match i {
             0 => {
+                assert!(!res);
                 assert_eq!(storage.len(), 1);
                 assert_eq!(storage["Counter"], "0".to_string());
             }
             1 => {
+                assert!(!res);
                 assert_eq!(storage.len(), 2);
                 assert_eq!(storage["Counter"], "0".to_string());
             }
             2 => {
+                assert!(res);
                 assert_eq!(storage.len(), 2);
                 assert_eq!(storage["Counter"], "1".to_string());
             }
             3 => {
+                assert!(res);
                 assert_eq!(storage.len(), 2);
                 assert_eq!(storage["Counter"], "2".to_string());
             }

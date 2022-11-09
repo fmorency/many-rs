@@ -246,23 +246,25 @@ impl<'a, T, E> Migration<'a, T, E> {
     }
 
     /// This function gets executed when the storage block height == the migration block height
-    pub fn initialize(&self, storage: &mut T, h: u64) -> Result<(), E> {
+    /// Returns true if the migration initialize function was run and false otherwise
+    pub fn initialize(&self, storage: &mut T, h: u64) -> Result<bool, E> {
         if self.status == Status::Enabled && h == self.metadata().block_height {
             debug!("Trying to initialize migration - {}", self.name());
             trace!("Migration: {}", self);
             return self.migration.initialize(storage);
         }
-        Ok(())
+        Ok(false)
     }
 
     /// This function gets executed when the storage block height > the migration block height
-    pub fn update(&self, storage: &mut T, h: u64) -> Result<(), E> {
+    /// Returns true if the migration initialize function was run and false otherwise
+    pub fn update(&self, storage: &mut T, h: u64) -> Result<bool, E> {
         if self.status == Status::Enabled && h > self.metadata().block_height {
             debug!("Trying to update migration - {}", self.name());
             trace!("Migration: {}", self);
             return self.migration.update(storage);
         }
-        Ok(())
+        Ok(false)
     }
 
     /// This function gets executed when the storage block height == the migration block height
@@ -378,29 +380,37 @@ impl<'a, T, E> InnerMigration<'a, T, E> {
     }
 
     /// This function gets executed when the storage block height == the migration block height
-    pub fn initialize(&self, storage: &mut T) -> Result<(), E> {
+    /// Returns true if the migration initialize function was run and false otherwise
+    pub fn initialize(&self, storage: &mut T) -> Result<bool, E> {
         match &self.r#type {
-            MigrationType::Regular(migration) => (migration.initialize_fn)(storage),
+            MigrationType::Regular(migration) => {
+                (migration.initialize_fn)(storage)?;
+                Ok(true)
+            },
             _ => {
                 tracing::trace!(
                     "Migration {} is not of type `Regular`, skipping",
                     self.name()
                 );
-                Ok(())
+                Ok(false)
             }
         }
     }
 
     /// This function gets executed when the storage block height >= the migration block height
-    pub fn update(&self, storage: &mut T) -> Result<(), E> {
+    /// Returns true if the migration initialize function was run and false otherwise
+    pub fn update(&self, storage: &mut T) -> Result<bool, E> {
         match &self.r#type {
-            MigrationType::Regular(migration) => (migration.update_fn)(storage),
+            MigrationType::Regular(migration) => {
+                (migration.update_fn)(storage)?;
+                Ok(true)
+            },
             _ => {
                 tracing::trace!(
                     "Migration {} is not of type `Regular`, skipping",
                     self.name()
                 );
-                Ok(())
+                Ok(false)
             }
         }
     }
