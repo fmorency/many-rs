@@ -237,8 +237,8 @@ fn status() {
         let status = migration.status();
 
         match i {
-            "A" | "B" | "C" => assert_eq!(status, &Status::Enabled),
-            "D" => assert_eq!(status, &Status::Disabled),
+            "A" | "B" | "C" => assert_eq!(status, Status::Enabled),
+            "D" => assert_eq!(status, Status::Disabled),
             _ => unimplemented!(),
         }
     }
