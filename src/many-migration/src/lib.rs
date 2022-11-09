@@ -3,9 +3,9 @@
 use minicbor::{encode::Error, encode::Write, Decode, Decoder, Encode, Encoder};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::cell::Cell;
 use std::collections::{BTreeMap, HashMap};
 use std::fmt;
+use std::sync::RwLock;
 use strum::Display;
 use tracing::{debug, trace};
 
@@ -158,7 +158,18 @@ pub struct Migration<'a, T, E> {
     pub metadata: Metadata,
 
     #[n(2)]
-    pub status: Cell<Status>,
+    #[cbor(encode_with = "encode_status")]
+    pub status: RwLock<Status>,
+}
+
+fn encode_status<C, W: Write>(
+    v: &RwLock<Status>,
+    e: &mut Encoder<W>,
+    _: &mut C,
+) -> Result<(), Error<W::Error>> {
+    let status = v.read().unwrap();
+    e.encode(*status)?;
+    Ok(())
 }
 
 fn encode_inner_migration<'a, C, T, E, W: Write>(
@@ -195,7 +206,7 @@ impl<'a, 'b, C: Copy + IntoIterator<Item = &'a InnerMigration<'a, T, E>>, T, E> 
             match d.u8()? {
                 0 => name = Some(d.str()?),
                 1 => metadata = Some(d.decode()?),
-                2 => status = Some(d.decode()?),
+                2 => status = Some(d.decode::<Status>()?),
                 _ => return Err(minicbor::decode::Error::message("Unknown key.")),
             }
         }
@@ -213,7 +224,7 @@ impl<'a, 'b, C: Copy + IntoIterator<Item = &'a InnerMigration<'a, T, E>>, T, E> 
         Ok(Self {
             migration,
             metadata,
-            status,
+            status: RwLock::new(status),
         })
     }
 }
@@ -247,17 +258,18 @@ impl<'a, T, E> Migration<'a, T, E> {
         Self {
             migration,
             metadata,
-            status: Cell::new(status),
+            status: RwLock::new(status),
         }
     }
 
     /// This function gets executed when the storage block height == the migration block height
     pub fn initialize(&self, storage: &mut T, h: u64) -> Result<(), E> {
-        if self.status.get() == Status::Enabled && h == self.metadata().block_height {
+        if *self.status.read().unwrap() == Status::Enabled && h == self.metadata().block_height {
             debug!("Trying to initialize migration - {}", self.name());
             trace!("Migration: {}", self);
             if self.migration.initialize(storage)? {
-                self.status.set(Status::Initialized);
+                let mut status = self.status.write().unwrap();
+                *status = Status::Initialized;
             }
         }
         Ok(())
@@ -265,7 +277,8 @@ impl<'a, T, E> Migration<'a, T, E> {
 
     /// This function gets executed when the storage block height > the migration block height
     pub fn update(&self, storage: &mut T, h: u64) -> Result<(), E> {
-        if (self.status.get() == Status::Enabled || self.status.get() == Status::Initialized)
+        let status = self.status.read().unwrap();
+        if (*status == Status::Enabled || *status == Status::Initialized)
             && h > self.metadata().block_height
         {
             debug!("Trying to update migration - {}", self.name());
@@ -277,7 +290,7 @@ impl<'a, T, E> Migration<'a, T, E> {
 
     /// This function gets executed when the storage block height == the migration block height
     pub fn hotfix<'b>(&'b self, b: &'b [u8], h: u64) -> Option<Vec<u8>> {
-        if self.status.get() == Status::Enabled && h == self.metadata().block_height {
+        if *self.status.read().unwrap() == Status::Enabled && h == self.metadata().block_height {
             debug!("Trying to execute hotfix - {}", self.name());
             trace!("Migration: {}", self);
             return self.migration.hotfix(b);
@@ -298,23 +311,16 @@ impl<'a, T, E> Migration<'a, T, E> {
     }
 
     pub fn status(&self) -> Status {
-        self.status.get()
-    }
-
-    pub fn disable(&mut self) {
-        self.status.set(Status::Disabled)
-    }
-
-    pub fn enable(&mut self) {
-        self.status.set(Status::Enabled)
+        let status = self.status.read().unwrap();
+        *status
     }
 
     pub fn is_enabled(&self) -> bool {
-        self.status.get() == Status::Enabled
+        *self.status.read().unwrap() == Status::Enabled
     }
 
     pub fn is_initialized(&self) -> bool {
-        self.status.get() == Status::Initialized
+        *self.status.read().unwrap() == Status::Initialized
     }
 }
 
