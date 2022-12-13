@@ -1,0 +1,11 @@
+platform(
+    name = "docker_image_platform",
+    constraint_values = [
+        "@bazel_tools//platforms:x86_64",
+        "@bazel_tools//platforms:linux",
+    ],
+    exec_properties = {
+        "OSFamily": "Linux",
+        "container-image": "docker://index.docker.io/lifted/ll-build@sha256:9c709c6a45de1e96636d20f06509902f6e01b9ac934f4c2e88823fc691d9e200",
+    },
+)
