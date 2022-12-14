@@ -31,6 +31,14 @@ load("@rules_rust//crate_universe:defs.bzl", "crate", "crates_repository")
 
 crates_repository(
     name = "crate_index",
+    # The libudev patch is required in order to be able to build the `libudev-sys` crate using a Remote Executor
+    # See https://github.com/dcuddeback/libudev-sys/pull/11
+    annotations = {"libudev-sys": [crate.annotation(
+       patches = [
+           "@//patches:libudev-sys-0.1.4.patch"
+       ],
+       patch_args = ["-p1"]
+    )]},
     cargo_lockfile = "//:Cargo.Bazel.lock",
     lockfile = "//:cargo-bazel-lock.json",
     manifests = [

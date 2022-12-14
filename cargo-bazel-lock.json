@@ -1,5 +1,5 @@
 {
-  "checksum": "fa16b2ad984c9332776bc3ddb0ed43a6157e85c324494702525060647d330113",
+  "checksum": "cbe499b55a2e5c149d2cd8c888af27783254f856637e61e5cbd7b3dae154eb66",
   "crates": {
     "aes 0.7.5": {
       "name": "aes",
@@ -9856,7 +9856,13 @@
       "repository": {
         "Http": {
           "url": "https://crates.io/api/v1/crates/libudev-sys/0.1.4/download",
-          "sha256": "3c8469b4a23b962c1396b9b451dda50ef5b283e8dd309d69033475fa9b334324"
+          "sha256": "3c8469b4a23b962c1396b9b451dda50ef5b283e8dd309d69033475fa9b334324",
+          "patch_args": [
+            "-p1"
+          ],
+          "patches": [
+            "@//patches:libudev-sys-0.1.4.patch"
+          ]
         }
       },
       "targets": [

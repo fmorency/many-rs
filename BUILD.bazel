@@ -6,6 +6,6 @@ platform(
     ],
     exec_properties = {
         "OSFamily": "Linux",
-        "container-image": "docker://index.docker.io/lifted/ll-build@sha256:9c709c6a45de1e96636d20f06509902f6e01b9ac934f4c2e88823fc691d9e200",
+        "container-image": "docker://index.docker.io/lifted/ll-build@sha256:2ccbe6b4ac6acc720a05254c2ac3bf2f0907c411d42215e868c526a3af25787c",
     },
 )
