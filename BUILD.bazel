@@ -9,7 +9,10 @@ package(default_visibility = [
 ])
 
 # Required for Vergen
-exports_files([".git"])
+filegroup(
+    name = "git",
+    srcs = glob(include = [".git/**/*"]),
+)
 
 ## PACKAGE CONFIGURATION ##
 # TODO: Get the version from the Cargo manifest

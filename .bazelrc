@@ -7,6 +7,11 @@ build --flag_alias=migration_testing=//src/many-ledger:migration_testing
 build --flag_alias=webauthn_testing=//src/many-ledger:webauthn_testing
 build --flag_alias=disable_token_sender_check=//src/many-ledger:disable_token_sender_check
 
+build:docker-sandbox --experimental_docker_image=lifted/ll-build:jammy
+build:docker-sandbox --spawn_strategy=docker --strategy=Rustc=docker --strategy=TestRunner=docker --genrule_strategy=docker
+build:docker-sandbox --experimental_docker_verbose
+build:docker-sandbox --experimental_enable_docker_sandbox
+
 build:all-features --balance_testing --migration_testing --webauthn_testing --disable_token_sender_check
 
 run:bats-resiliency-ledger --balance_testing --migration_testing

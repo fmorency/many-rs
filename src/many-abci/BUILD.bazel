@@ -10,9 +10,9 @@ package(default_visibility = [
 ])
 
 cargo_build_script(
-    name = "build_script",
+    name = "abci-build_script",
     srcs = ["build.rs"],
-    data = ["//:.git"],
+    data = ["//:git"],
     deps = all_crate_deps(build = True),
 )
 
@@ -20,13 +20,16 @@ rust_binary(
     name = "many-abci",
     srcs = glob(include = ["src/**/*.rs"]),
     aliases = aliases(),
+    compile_data = [
+        "//:git",
+    ],
     proc_macro_deps = all_crate_deps(
         proc_macro = True,
     ),
     deps = all_crate_deps(
         normal = True,
     ) + [
-        ":build_script",
+        ":abci-build_script",
         "//src/many-client",
         "//src/many-cli-helpers",
         "//src/many-error",
@@ -76,7 +79,7 @@ rust_image(
     deps = all_crate_deps(
         normal = True,
     ) + [
-        ":build_script",
+        ":abci-build_script",
         "//src/many-client",
         "//src/many-cli-helpers",
         "//src/many-error",

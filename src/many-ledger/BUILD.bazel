@@ -44,9 +44,9 @@ rustc_flags_file(
 )
 
 cargo_build_script(
-    name = "build_script",
+    name = "ledger-build_script",
     srcs = ["build.rs"],
-    data = ["//:.git"],
+    data = ["//:git"],
     deps = all_crate_deps(build = True),
 )
 
@@ -56,6 +56,7 @@ rust_binary(
     aliases = aliases(),
     compile_data = [
         ":flags_file",
+        "//:git",
     ],
     proc_macro_deps = all_crate_deps(
         proc_macro = True,
@@ -67,7 +68,7 @@ rust_binary(
     deps = all_crate_deps(
         normal = True,
     ) + [
-        ":build_script",
+        ":ledger-build_script",
         "//src/many-cli-helpers",
         "//src/many-error",
         "//src/many-identity",
@@ -202,7 +203,7 @@ rust_image(
     deps = all_crate_deps(
         normal = True,
     ) + [
-        ":build_script",
+        ":ledger-build_script",
         "//src/many-cli-helpers",
         "//src/many-error",
         "//src/many-identity",
