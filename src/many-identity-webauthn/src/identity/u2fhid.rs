@@ -25,7 +25,7 @@ use webauthn_authenticator_rs::AuthenticatorBackend;
 // use crate::Url;
 // <<<<<<
 
-use base64urlsafedata::Base64UrlSafeData;
+use webauthn_rs::prelude::Base64UrlSafeData;
 use webauthn_rs_proto::PublicKeyCredentialCreationOptions;
 use webauthn_rs_proto::{
     AuthenticatorAttestationResponseRaw, RegisterPublicKeyCredential,

@@ -1,5 +1,20 @@
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
+### SKYLIB ###
+http_archive(
+    name = "bazel_skylib",
+    sha256 = "b8a1527901774180afc798aeb28c4634bdccf19c4d98e7bdd1ce79d1fe9aaad7",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.4.1/bazel-skylib-1.4.1.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.4.1/bazel-skylib-1.4.1.tar.gz",
+    ],
+)
+
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+
+bazel_skylib_workspace()
+### END SKYLIB ###
+
 ## RUST SECTION ##
 http_archive(
     name = "rules_rust",
@@ -7,7 +22,7 @@ http_archive(
     urls = ["https://github.com/bazelbuild/rules_rust/releases/download/0.17.0/rules_rust-v0.17.0.tar.gz"],
 )
 
-load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_register_toolchains")
+load("@rules_rust//rust:repositories.bzl", "rules_rust_dependencies", "rust_register_toolchains", "rust_repository_set")
 
 rules_rust_dependencies()
 
@@ -15,6 +30,14 @@ RUST_VERSION = "nightly/2023-01-03"
 
 rust_register_toolchains(
     edition = "2021",
+    versions = [RUST_VERSION],
+)
+
+rust_repository_set(
+    name = "rust-linux-aarch64",
+    edition = "2021",
+    exec_triple = "x86_64-unknown-linux-gnu",
+    extra_target_triples = ["aarch64-unknown-linux-gnu"],
     versions = [RUST_VERSION],
 )
 
@@ -242,3 +265,36 @@ bazel_bats_dependencies(
     version = BATS_CORE_VERSION,
 )
 ### END BATS SECTION ###
+
+### FOREIGN CC ###
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "rules_foreign_cc",
+    sha256 = "2a4d07cd64b0719b39a7c12218a3e507672b82a97b98c6a89d38565894cf7c51",
+    strip_prefix = "rules_foreign_cc-0.9.0",
+    url = "https://github.com/bazelbuild/rules_foreign_cc/archive/refs/tags/0.9.0.tar.gz",
+)
+
+load("@rules_foreign_cc//foreign_cc:repositories.bzl", "rules_foreign_cc_dependencies")
+
+rules_foreign_cc_dependencies()
+### END FOREIGN CC ###
+
+### ZIG CC ###
+BAZEL_ZIG_CC_VERSION = "v1.0.0"
+
+http_archive(
+    name = "bazel-zig-cc",
+    sha256 = "1f4a1d1e0f6b3e5aa6e1c225fcb23c032f8849441de97b9a38d6ea37362d28e2",
+    strip_prefix = "bazel-zig-cc-{}".format(BAZEL_ZIG_CC_VERSION),
+    urls = ["https://git.sr.ht/~motiejus/bazel-zig-cc/archive/{}.tar.gz".format(BAZEL_ZIG_CC_VERSION)],
+)
+
+load("@bazel-zig-cc//toolchain:defs.bzl", zig_toolchains = "toolchains")
+
+# version, url_formats and host_platform_sha256 are optional, but highly
+# recommended. Zig SDK is by default downloaded from dl.jakstys.lt, which is a
+# tiny server in the closet of Yours Truly.
+zig_toolchains()
+### END ZIG CC ###

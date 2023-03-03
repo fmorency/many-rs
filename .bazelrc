@@ -1,6 +1,9 @@
 # Taken from the Bazel `rules_rust` Github repository
 build --@rules_rust//rust/toolchain/channel=nightly
 
+# Required for Zig CC
+build --incompatible_enable_cc_toolchain_resolution
+
 # Feature flag alias
 build --flag_alias=balance_testing=//src/many-ledger:balance_testing
 build --flag_alias=migration_testing=//src/many-ledger:migration_testing
