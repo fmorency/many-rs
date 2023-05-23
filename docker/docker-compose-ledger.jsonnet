@@ -35,13 +35,17 @@ local generate_allow_addrs_flag(allow_addrs) =
 local abci(i, user, allow_addrs, abci_migrations) = {
     image: "bazel/src/many-abci:many-abci-image",
     ports: [ (8000 + i) + ":8000" ],
-    volumes: [ "./node" + i + ":/genfiles:ro" ],
+    volumes: [
+        "./node" + i + "/persistent-ledger:/persistent",
+        "./node" + i + ":/genfiles:ro",
+    ],
     user: "" + user,
     command: [
         "--verbose", "--verbose",
         "--many", "0.0.0.0:8000",
         "--many-app", "http://ledger-" + i + ":8000",
         "--many-pem", "/genfiles/abci.pem",
+        "--cache-db", "/persistent/abci_request_cache.db",
         "--abci", "0.0.0.0:26658",
         "--tendermint", "http://tendermint-" + i + ":26657/"
     ] + load_abci_migrations(abci_migrations)
@@ -78,7 +82,7 @@ local tendermint(i, user) = {
     volumes: [
         "./node" + i + "/tendermint/:/tendermint"
     ],
-    ports: [ "" + (26600 + i) + ":26600" ],
+    ports: [ "" + (26600 + i) + ":26657" ],
 };
 
 function(nb_nodes=4, user=1000, id_with_balances="", allow_addrs=false, enable_migrations=false, abci_migrations=false) {

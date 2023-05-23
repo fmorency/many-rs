@@ -3,7 +3,7 @@
 # Token endpoints should be activated after the migration
 
 GIT_ROOT="$BATS_TEST_DIRNAME/../../../"
-MIGRATION_ROOT="$GIT_ROOT/tests/ledger_migrations.json"
+MIGRATION_ROOT="$GIT_ROOT/staging/ledger_migrations.json"
 MAKEFILE="Makefile.ledger"
 MFX_ADDRESS=mqbfbahksdwaqeenayy2gxke32hgb7aq4ao4wt745lsfs6wiaaaaqnz
 
@@ -141,6 +141,7 @@ function teardown() {
         refute_output --partial "Some memo"
     done
 
+    # Mint tokens as the token identity
     call_ledger --pem=1 --port=8000 token mint ${SYMBOL} ''\''{"'$(identity 2)'": 123, "'$(identity 3)'": 456}'\'''
     for port in 8000 8001 8002 8003; do
         call_ledger --port=${port} token info "${SYMBOL}"
@@ -148,11 +149,28 @@ function teardown() {
         assert_output --regexp "circulating:.*(.*579,.*)"
     done
 
+    # Burn tokens as the token identity
     call_ledger --pem=1 --port=8000 token burn ${SYMBOL} ''\''{"'$(identity 2)'": 122, "'$(identity 3)'": 455}'\''' --error-on-under-burn
     for port in 8000 8001 8002 8003; do
         call_ledger --port=${port} token info "${SYMBOL}"
         assert_output --regexp "total:.*(.*2,.*)"
         assert_output --regexp "circulating:.*(.*2,.*)"
+    done
+
+    # Mint tokens as the token owner
+    call_ledger --pem=2 --port=8000 token mint ${SYMBOL} ''\''{"'$(identity 2)'": 123, "'$(identity 3)'": 456}'\'''
+    for port in 8000 8001 8002 8003; do
+        call_ledger --port=${port} token info "${SYMBOL}"
+        assert_output --regexp "total:.*(.*581,.*)"
+        assert_output --regexp "circulating:.*(.*581,.*)"
+    done
+
+    # Burn tokens as the token owner
+    call_ledger --pem=2 --port=8000 token burn ${SYMBOL} ''\''{"'$(identity 2)'": 122, "'$(identity 3)'": 455}'\''' --error-on-under-burn
+    for port in 8000 8001 8002 8003; do
+        call_ledger --port=${port} token info "${SYMBOL}"
+        assert_output --regexp "total:.*(.*4,.*)"
+        assert_output --regexp "circulating:.*(.*4,.*)"
     done
 }
 
@@ -166,4 +184,25 @@ function teardown() {
 
     # Creation successful
     create_token --pem=1 --port=8000
+}
+
+@test "$SUITE: Token creation migration is properly initialized when resetting the node" {
+    check_consistency --pem=1 --balance=1000000 --id="$(identity 1)" 8000 8001 8002 8003
+    call_ledger --pem=1 --port=8000 token info ${MFX_ADDRESS}
+    assert_output --partial "Invalid method name"
+
+    wait_for_block 30
+    for port in 8000 8001 8002 8003; do
+        call_ledger --pem=1 --port=${port} token info ${MFX_ADDRESS}
+        assert_output --partial "name: \"Manifest Network Token\""
+    done
+
+    cd "$GIT_ROOT/docker/" || exit 1
+    make -f $MAKEFILE stop-single-node-0
+    wait_for_block 40
+    make -f $MAKEFILE start-single-node-detached-0
+    wait_for_server 8000
+
+    call_ledger --pem=1 --port=8000 token info ${MFX_ADDRESS}
+    assert_output --partial "name: \"Manifest Network Token\""
 }
