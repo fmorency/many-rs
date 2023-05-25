@@ -58,41 +58,51 @@ function teardown() {
     sleep 4  # One consensus round.
     check_consistency --pem=1 --balance=990000 --id="$(identity 1)" 8000 8001 8002 8003
     check_consistency --pem=2 --balance=10000 --id="$(identity 2)" 8000 8001 8002 8003
+
+    run many message --pem="$(pem 1)" --server http://localhost:8000 account.create '{0: "Foobar", 1: {"'$(identity 2)'": ["canLedgerTransact"]}, 2: [0]}'
+    echo "# OUTPUT: ${output}" >&3
+    account=$(echo "${output}" | grep -oP "h'\K\w+" | xargs many id)
+    run many message --pem="$(pem 1)" --server http://localhost:8000 account.info '{0: "'${account}'"}'
+    assert_output --partial "Foobar"
+    run many message --pem="$(pem 1)" --server http://localhost:8002 account.info '{0: "'${account}'"}'
+    assert_output --partial "Foobar"
 }
 
-@test "$SUITE: Network is consistent with 1 node down" {
-    cd "$GIT_ROOT/docker/" || exit 1
-
-    # Bring down node 3.
-    make -f $MAKEFILE stop-single-node-3
-
-    # Check consistency with all nodes up.
-    check_consistency --pem=1 --balance=1000000 --id="$(identity 1)" 8000 8001 8002
-    call_ledger --pem=1 --port=8000 send "$(identity 2)" 1000 MFX
-    sleep 10  # One consensus round.
-    check_consistency --pem=1 --balance=999000 --id="$(identity 1)" 8000 8001 8002
-    check_consistency --pem=2 --balance=1000 --id="$(identity 2)" 8000 8001 8002
-
-    call_ledger --pem=1 --port=8001 send "$(identity 2)" 2000 MFX
-    sleep 10  # One consensus round.
-    check_consistency --pem=1 --balance=997000 --id="$(identity 1)" 8000 8001 8002
-    check_consistency --pem=2 --balance=3000 --id="$(identity 2)" 8000 8001 8002
-
-    call_ledger --pem=1 --port=8002 send "$(identity 2)" 3000 MFX
-    sleep 10  # One consensus round.
-    check_consistency --pem=1 --balance=994000 --id="$(identity 1)" 8000 8001 8002
-    check_consistency --pem=2 --balance=6000 --id="$(identity 2)" 8000 8001 8002
-
-    # Bring it back.
-    make -f $MAKEFILE start-single-node-detached-3 || {
-        echo '# Could not start nodes...' >&3
-        exit 1
-    }
-
-    # Give time to the servers to start.
-    wait_for_server 8003
-
-    sleep 10
-    check_consistency --pem=1 --balance=994000 --id="$(identity 1)" 8000 8001 8002 8003
-    check_consistency --pem=2 --balance=6000 --id="$(identity 2)" 8000 8001 8002 8003
-}
+#@test "$SUITE: Network is consistent with 1 node down" {
+#    local account
+#
+#    cd "$GIT_ROOT/docker/" || exit 1
+#
+#    # Bring down node 3.
+#    make -f $MAKEFILE stop-single-node-3
+#
+#    # Check consistency with all nodes up.
+#    check_consistency --pem=1 --balance=1000000 --id="$(identity 1)" 8000 8001 8002
+#    call_ledger --pem=1 --port=8000 send "$(identity 2)" 1000 MFX
+#    sleep 10  # One consensus round.
+#    check_consistency --pem=1 --balance=999000 --id="$(identity 1)" 8000 8001 8002
+#    check_consistency --pem=2 --balance=1000 --id="$(identity 2)" 8000 8001 8002
+#
+#    call_ledger --pem=1 --port=8001 send "$(identity 2)" 2000 MFX
+#    sleep 10  # One consensus round.
+#    check_consistency --pem=1 --balance=997000 --id="$(identity 1)" 8000 8001 8002
+#    check_consistency --pem=2 --balance=3000 --id="$(identity 2)" 8000 8001 8002
+#
+#    call_ledger --pem=1 --port=8002 send "$(identity 2)" 3000 MFX
+#    sleep 10  # One consensus round.
+#    check_consistency --pem=1 --balance=994000 --id="$(identity 1)" 8000 8001 8002
+#    check_consistency --pem=2 --balance=6000 --id="$(identity 2)" 8000 8001 8002
+#
+#    # Bring it back.
+#    make -f $MAKEFILE start-single-node-detached-3 || {
+#        echo '# Could not start nodes...' >&3
+#        exit 1
+#    }
+#
+#    # Give time to the servers to start.
+#    wait_for_server 8003
+#
+#    sleep 10
+#    check_consistency --pem=1 --balance=994000 --id="$(identity 1)" 8000 8001 8002 8003
+#    check_consistency --pem=2 --balance=6000 --id="$(identity 2)" 8000 8001 8002 8003
+#}

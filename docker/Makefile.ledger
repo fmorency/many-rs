@@ -14,7 +14,7 @@ endif
 
 MEMPOOL_CACHE_ARGUMENT := ""
 ifdef MEMPOOL_CACHE_ZERO
-	MEMPOOL_CACHE_ARGUMENT := "-m 0"
+	MEMPOOL_CACHE_ARGUMENT := "-m0"
 endif
 
 include Makefile.common
