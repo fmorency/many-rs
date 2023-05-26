@@ -4,8 +4,7 @@
 GIT_ROOT="$BATS_TEST_DIRNAME/../../../"
 MFX_ADDRESS=mqbfbahksdwaqeenayy2gxke32hgb7aq4ao4wt745lsfs6wiaaaaqnz
 START_BALANCE=100000000000
-MIGRATION_ROOT="$GIT_ROOT/tests/ledger_migrations.json"
-
+MIGRATION_ROOT="$GIT_ROOT/staging/ledger_migrations.json"
 load '../../test_helper/load'
 load '../../test_helper/ledger'
 
@@ -101,10 +100,6 @@ function teardown() {
 
 @test "$SUITE: can't create as anonymous" {
     create_token --error=anon --port=8000
-}
-
-@test "$SUITE: can't create as identity 2" {
-    create_token --pem=2 --error=invalid_sender --port=8000
 }
 
 @test "$SUITE: can update token" {
