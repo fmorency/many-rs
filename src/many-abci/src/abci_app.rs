@@ -95,7 +95,7 @@ impl AbciApp {
         })
     }
 
-    pub fn with_cache<C: RequestValidator + Send + Sync + 'static>(mut self, cache: C) -> Self {
+    pub fn with_validator<C: RequestValidator + Send + Sync + 'static>(mut self, cache: C) -> Self {
         self.cache = Arc::new(RwLock::new(cache));
         self
     }
@@ -235,7 +235,7 @@ impl Application for AbciApp {
 
     fn check_tx(&self, request: RequestCheckTx) -> ResponseCheckTx {
         self.do_check_tx(&request.tx)
-            .and_then(|_| Ok(Default::default()))
+            .map(|_| Default::default())
             .unwrap_or_else(|log| {
                 debug!("check_tx failed: {}", log);
                 ResponseCheckTx {
