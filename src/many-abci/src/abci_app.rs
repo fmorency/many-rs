@@ -247,15 +247,6 @@ impl Application for AbciApp {
     }
 
     fn deliver_tx(&self, request: RequestDeliverTx) -> ResponseDeliverTx {
-        if let Err(log) = self.do_check_tx(&request.tx) {
-            debug!("deliver_tx failed check: {}", log);
-            return ResponseDeliverTx {
-                code: ManyAbciErrorCodes::CheckError as u32,
-                log,
-                ..Default::default()
-            };
-        }
-
         let cose = match CoseSign1::from_slice(&request.tx) {
             Ok(x) => x,
             Err(err) => {
@@ -304,16 +295,20 @@ impl Application for AbciApp {
 
                 {
                     let cache = self.cache.write();
-                    if let Err(_e) = cache {
+                    if cache.is_err() {
                         return ResponseDeliverTx {
                             code: ManyAbciErrorCodes::FrontendError as u32,
                             ..Default::default()
                         };
                     }
                     if let Err(e) = cache.unwrap().message_executed(&cose, &response) {
-                        // We log those errors, but the message already executed,
-                        // so we don't return an error.
-                        tracing::error!("message_executed failed: {e}");
+                        // There's nothing we can do here, since the backend has
+                        // already executed the message and updated its test.
+                        panic!(
+                            "message_executed failed: {e}\n\
+                            The backend and tendermint states might be inconsistent \
+                            and would need to revert to a previous block."
+                        );
                     }
                 }
 
