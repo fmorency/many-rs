@@ -51,6 +51,7 @@ crates_repository(
     lockfile = "//:cargo-bazel-lock.json",
     manifests = [
         "//:Cargo.toml",
+        "//src/event-parser:Cargo.toml",
         "//src/genesis-from-db:Cargo.toml",
         "//src/http-proxy:Cargo.toml",
         "//src/idstore-export:Cargo.toml",

@@ -27,6 +27,7 @@ basic_naming(
 pkg_tar(
     name = "many-rs-tar",
     srcs = [
+        "//src/event-parser",
         "//src/genesis-from-db",
         "//src/http-proxy",
         "//src/idstore-export",
