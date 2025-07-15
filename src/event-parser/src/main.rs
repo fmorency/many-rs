@@ -13,7 +13,8 @@ use many_cli_helpers::error::ClientServerError::Client;
 use many_client::client::blocking::ManyClient;
 use many_identity::{Address, AnonymousIdentity, Identity};
 use many_modules::events::{EventFilter, EventId};
-use many_types::{CborRange, Memo, VecOrSingle};
+use many_modules::ledger::{SendArgs, TokenBurnArgs, TokenMintArgs};
+use many_types::{CborRange, Memo};
 use many_types::ledger::TokenAmount;
 
 #[derive(Encode, Decode)]
@@ -143,43 +144,76 @@ fn parse_balances(
         *balances.entry(address).or_insert(TokenAmount::from(0u8)) -= amount;
     }
 
-    let mut wtr = Writer::from_writer(File::create("balances.csv").map_err(|e| Client(anyhow!("Can't create CSV writer")))?);
-    wtr.write_record(&["address", "amount"]).map_err(|e| Client(anyhow!("Can't write CSV header")))?;
+    let mut wtr = Writer::from_writer(File::create("balances.csv").map_err(|_e| Client(anyhow!("Can't create CSV writer")))?);
+    wtr.write_record(&["address", "amount"]).map_err(|_e| Client(anyhow!("Can't write CSV header")))?;
     for (address, amount) in &balances {
-        wtr.write_record(&[address, &amount.to_string()]).map_err(|e| Client(anyhow!("Can't write CSV record")))?;
+        wtr.write_record(&[address, &amount.to_string()]).map_err(|_e| Client(anyhow!("Can't write CSV record")))?;
     }
-    wtr.flush().map_err(|e| Client(anyhow!("Can't flush CSV record")))?;
+    wtr.flush().map_err(|_e| Client(anyhow!("Can't flush CSV record")))?;
 
     Ok(())
 }
 
 fn parse_transactions(
-    all_events: Vec<many_modules::events::EventLog>,
+    all_events: BTreeMap<EventId, &many_modules::events::EventLog>,
     mfx: Address,
 ) -> Result<(), ClientServerError> {
-    let mut wtr = Writer::from_writer(File::create("transactions.csv").map_err(|e| Client(anyhow!("Can't create CSV writer")))?);
-    wtr.write_record(&["date", "from", "to", "amount", "type", "memo"]).map_err(|e| Client(anyhow!("Can't write CSV header")))?;
+    let mut wtr = Writer::from_writer(File::create("transactions.csv").map_err(|_e| Client(anyhow!("Can't create CSV writer")))?);
+    wtr.write_record(&["date", "from", "to", "amount", "type", "memo"]).map_err(|_e| Client(anyhow!("Can't write CSV header")))?;
 
-    for event in all_events {
+    // Collect all events that are of type AccountMultisigSubmit for memo extraction
+    let submit_events = all_events
+        .iter()
+        .filter(|(_, event)| matches!(event.content, many_modules::events::EventInfo::AccountMultisigSubmit { .. }))
+        .collect::<Vec<_>>();
+
+    for (_id, event) in &all_events {
         let t = event.time.as_system_time()?;
         let dt: DateTime<Utc> = t.into();
         let iso_dt = dt.to_rfc3339();
 
-        let k = event.kind().to_string();
-
-        match event.content {
+        match &event.content {
             many_modules::events::EventInfo::TokenMint { symbol, distribution, memo } => {
-                if symbol != mfx {
+                if symbol != &mfx {
                     continue;
                 }
 
-                let m = memo.unwrap_or(Memo::try_from("")?);
+                // Do we have a direct memo?
+                let m = if let Some(m) = memo {
+                    m.clone()
+                // If not, check if we have a matching Submit transaction
+                } else {
+                    let submit_found = submit_events.iter().find(|(_, e)| match &e.content {
+                        many_modules::events::EventInfo::AccountMultisigSubmit { transaction, .. } => {
+                            matches!(transaction.as_ref(), many_modules::events::AccountMultisigTransaction::TokenMint(TokenMintArgs { symbol: t_symbol, distribution: t_distribution, memo: t_memo }) if t_symbol == symbol && t_distribution == distribution && t_memo == memo)
+                        }
+                        _ => false,
+                    });
+
+                    if let Some((_, submit_event)) = submit_found {
+                        if let many_modules::events::EventInfo::AccountMultisigSubmit { memo, memo_, .. } = &submit_event.content {
+                            if let Some(memo) = memo {
+                                memo.clone()
+                            } else if let Some(memo_) = memo_ {
+                                Memo::from(memo_.clone())
+                            } else {
+                                Memo::try_from("")?
+                            }
+                        } else {
+                            Memo::try_from("")?
+                        }
+                    } else {
+                        Memo::try_from("")?
+                    }
+                };
+
+
                 let a: Vec<String> = m.iter_str().map(|s| s.to_string()).collect();
                 let memo_str = if a.is_empty() {
                     "".to_string()
                 }
                 else {
-                    format!("\"{}\"", a.join(" "))
+                    format!("{}", a.join(", "))
                 };
 
                 for (account, amount) in distribution {
@@ -188,23 +222,51 @@ fn parse_transactions(
                         "".to_string(),
                         account.to_string(),
                         amount.to_string(),
-                        k.clone(),
+                        "tokens.mint".to_string(),
                         memo_str.clone(),
-                    ]).map_err(|e| Client(anyhow!("Can't write CSV record")))?;
+                    ]).map_err(|_e| Client(anyhow!("Can't write CSV record")))?;
                 }
             },
             many_modules::events::EventInfo::TokenBurn { symbol, distribution, memo } => {
-                if symbol != mfx {
+                if symbol != &mfx {
                     continue;
                 }
 
-                let m = memo.unwrap_or(Memo::try_from("")?);
+                // Do we have a direct memo?
+                let m = if let Some(m) = memo {
+                    m.clone()
+                // If not, check if we have a matching Submit transaction
+                } else {
+                    let submit_found = submit_events.iter().find(|(_, e)| match &e.content {
+                        many_modules::events::EventInfo::AccountMultisigSubmit { transaction, .. } => {
+                            matches!(transaction.as_ref(), many_modules::events::AccountMultisigTransaction::TokenBurn(TokenBurnArgs { symbol: t_symbol, distribution: t_distribution, memo: t_memo, .. }) if t_symbol == symbol && t_distribution == distribution && t_memo == memo)
+                        }
+                        _ => false,
+                    });
+
+                    if let Some((_, submit_event)) = submit_found {
+                        if let many_modules::events::EventInfo::AccountMultisigSubmit { memo, memo_, .. } = &submit_event.content {
+                            if let Some(memo) = memo {
+                                memo.clone()
+                            } else if let Some(memo_) = memo_ {
+                                Memo::from(memo_.clone())
+                            } else {
+                                Memo::try_from("")?
+                            }
+                        } else {
+                            Memo::try_from("")?
+                        }
+                    } else {
+                        Memo::try_from("")?
+                    }
+                };
+
                 let a: Vec<String> = m.iter_str().map(|s| s.to_string()).collect();
                 let memo_str = if a.is_empty() {
                     "".to_string()
                 }
                 else {
-                    format!("\"{}\"", a.join(" "))
+                    format!("{}", a.join(", "))
                 };
 
                 for (account, amount) in distribution {
@@ -213,23 +275,50 @@ fn parse_transactions(
                         account.to_string(),
                         "".to_string(),
                         amount.to_string(),
-                        k.clone(),
+                        "tokens.burn".to_string(),
                         memo_str.clone(),
-                    ]).map_err(|e| Client(anyhow!("Can't write CSV record")))?;
+                    ]).map_err(|_e| Client(anyhow!("Can't write CSV record")))?;
                 }
             }
             many_modules::events::EventInfo::Send { from, to, symbol, memo, amount } => {
-                if symbol != mfx {
+                if symbol != &mfx {
                     continue;
                 }
 
-                let m = memo.unwrap_or(Memo::try_from("")?);
+                // Do we have a direct memo?
+                let m = if let Some(m) = memo {
+                    m.clone()
+                // If not, check if we have a matching Submit transaction
+                } else {
+                    let submit_found = submit_events.iter().find(|(_, e)| match &e.content {
+                        many_modules::events::EventInfo::AccountMultisigSubmit { transaction, .. } => {
+                            matches!(transaction.as_ref(), many_modules::events::AccountMultisigTransaction::Send(SendArgs {from: t_from, to: t_to, amount: t_amount, symbol: t_symbol, memo: t_memo  }) if t_symbol == symbol && t_from == from && t_to == to && t_amount == amount && t_memo == memo)
+                        }
+                        _ => false,
+                    });
+
+                    if let Some((_, submit_event)) = submit_found {
+                        if let many_modules::events::EventInfo::AccountMultisigSubmit { memo, memo_, .. } = &submit_event.content {
+                            if let Some(memo) = memo {
+                                memo.clone()
+                            } else if let Some(memo_) = memo_ {
+                                Memo::from(memo_.clone())
+                            } else {
+                                Memo::try_from("")?
+                            }
+                        } else {
+                            Memo::try_from("")?
+                        }
+                    } else {
+                        Memo::try_from("")?
+                    }
+                };
                 let a: Vec<String> = m.iter_str().map(|s| s.to_string()).collect();
                 let memo_str = if a.is_empty() {
                     "".to_string()
                 }
                 else {
-                    format!("\"{}\"", a.join(" "))
+                    format!("{}", a.join(", "))
                 };
 
                 wtr.write_record(&[
@@ -237,9 +326,9 @@ fn parse_transactions(
                     from.to_string(),
                     to.to_string(),
                     amount.to_string(),
-                    k.clone(),
+                    "ledger.send".to_string(),
                     memo_str,
-                ]).map_err(|e| Client(anyhow!("Can't write CSV record")))?;
+                ]).map_err(|_e| Client(anyhow!("Can't write CSV record")))?;
             }
             _ => {}
         }
@@ -274,8 +363,13 @@ fn main() -> Result<(), anyhow::Error> {
 
     println!("Total events loaded: {}", all_events.len());
 
+    let event_map: BTreeMap<_, _> = all_events
+        .iter()
+        .map(|event| (event.id.clone(), event))
+        .collect();
+
     parse_balances(&all_events, mfx).map_err(|e| anyhow!("Failed to parse events: {}", e))?;
-    parse_transactions(all_events, mfx).map_err(|e| anyhow!("Failed to parse transactions: {}", e))?;
+    parse_transactions(event_map, mfx).map_err(|e| anyhow!("Failed to parse transactions: {}", e))?;
 
     Ok(())
 }
