@@ -105,8 +105,6 @@ enum SubCommand {
 
     /// Perform a token operation
     Token(tokens::CommandOpt),
-
-    // Events(events::EventsOpt),
 }
 
 #[derive(Parser)]
@@ -383,7 +381,6 @@ fn main() {
         }
         SubCommand::Multisig(opts) => multisig::multisig(client, opts),
         SubCommand::Token(opts) => tokens::tokens(client, opts),
-        // SubCommand::Events(opts) => events::events(client, opts),
     };
 
     if let Err(err) = result {
